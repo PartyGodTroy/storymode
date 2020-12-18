@@ -23,10 +23,12 @@ import { MeshBuilder, TransformNode } from '@babylonjs/core/Meshes'
 import { Scene } from '@babylonjs/core/scene'
 import store from '../appstore'
 
+import { VideoTexture } from '@babylonjs/core'
+
 export default class Renderer extends Vue {
   private _engine!: Engine;
   private _scenes!: Scene[];
-  private _defaultScene!: Scene
+  private _defaultScene!: Scene;
 
   get canvas (): HTMLCanvasElement {
     return this.$refs.renderCanvas as HTMLCanvasElement
@@ -74,7 +76,7 @@ export default class Renderer extends Vue {
   }
 
   private createDefaultScene () {
-    const scene = this._defaultScene = this.createScene()
+    const scene = (this._defaultScene = this.createScene())
     scene.clearColor = new Color4(0, 1, 1, 1)
     const camera = new ArcRotateCamera(
       '',
@@ -89,12 +91,39 @@ export default class Renderer extends Vue {
     camera.minZ = 1e-4
 
     camera.attachControl(this.canvas, true)
-    const mat = new StandardMaterial('mat1', scene)
-    mat.emissiveColor = Color3.Blue()
-    mat.diffuseColor = Color3.Blue()
 
-    const box = MeshBuilder.CreateBox('box', { size: 5 }, scene)
-    box.material = mat
+    const plane = MeshBuilder.CreatePlane('sphere1', { size: 15 }, scene)
+    plane.rotation.z = Math.PI
+
+    // Move the sphere upward 1/2 its height
+    plane.position.y = 1
+
+    const mat = new StandardMaterial('mat', scene)
+    mat.diffuseColor = Color3.White()
+
+    store.subscribe((m, s) => {
+      // Recorded Started
+      if (m.type === 'setRecordingState' && m.payload) {
+        // Do some video readying stuff
+        VideoTexture.CreateFromWebCam(
+          scene,
+          (videoTexture) => {
+            mat.emissiveTexture = videoTexture
+            plane.material = mat
+          },
+          {
+            maxWidth: 256,
+            maxHeight: 256,
+            minWidth: 256,
+            minHeight: 256,
+            deviceId: 'hello'
+          }
+        )
+      }
+      if (m.type === 'setRecordingState' && !m.payload) {
+        mat.emissiveTexture = null
+      }
+    })
   }
 }
 </script>

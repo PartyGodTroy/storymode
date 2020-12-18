@@ -4,7 +4,11 @@
 
 <template>
   <div class="home">
-    <button @click="toggleRecording">{{recordBtnTxt}}</button>
+    <div class="controls">
+      <button @click="toggleRecording">
+      {{recordBtnTxt}}
+      </button>
+    </div>
     <Renderer></Renderer>
     <ScriptEditor></ScriptEditor>
   </div>
@@ -24,24 +28,28 @@ import ScriptEditor from '@/components/ScriptEditor.vue'
   }
 })
 export default class Home extends Vue {
+  get isRecording (): boolean {
+    return this.$store.getters.isRecording
+  }
+
   get recordBtnTxt (): string {
     return this.$store.getters.isRecording
-      ? 'Stop Recording'
-      : 'Start Recording'
+      ? '❌ stop recording'
+      : '⭕ Record'
   }
 
   startRecording () {
     if (this.$store.getters.isRecording) {
       return
     }
-    this.$store.dispatch('startSpeechToText')
+    this.$store.dispatch('record')
   }
 
   stopRecording () {
     if (!this.$store.getters.isRecording) {
       return
     }
-    this.$store.dispatch('stopSpeechToText')
+    this.$store.dispatch('stop')
   }
 
   toggleRecording () {
@@ -55,7 +63,7 @@ export default class Home extends Vue {
   mounted () {
     this.$store.commit('initSpeechToText')
     this.$store.subscribe((mutation: any, state: AppState) => {
-      console.log(mutation.payload)
+      // console.log(mutation.payload)
     })
   }
 }
