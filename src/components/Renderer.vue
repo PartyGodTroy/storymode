@@ -18,7 +18,7 @@ import { TouchCamera } from '@babylonjs/core/Cameras/touchCamera'
 import { Engine } from '@babylonjs/core/Engines'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
-import { Color3, Color4, Vector3 } from '@babylonjs/core/Maths'
+import { Color3, Color4, Space, Vector3 } from '@babylonjs/core/Maths'
 import { MeshBuilder, TransformNode } from '@babylonjs/core/Meshes'
 import { Scene } from '@babylonjs/core/scene'
 import store from '../appstore'
@@ -28,6 +28,7 @@ import { VideoTexture } from '@babylonjs/core'
 export default class Renderer extends Vue {
   private _engine!: Engine;
   private _scenes!: Scene[];
+  private static WebcamTexture: VideoTexture
   private _defaultScene!: Scene;
 
   get canvas (): HTMLCanvasElement {
@@ -86,7 +87,6 @@ export default class Renderer extends Vue {
       new Vector3(0, 0, 0),
       scene
     )
-
     camera.fov = Math.PI / 2
     camera.minZ = 1e-4
 
@@ -100,28 +100,27 @@ export default class Renderer extends Vue {
 
     const mat = new StandardMaterial('mat', scene)
     mat.diffuseColor = Color3.White()
-
     store.subscribe((m, s) => {
       // Recorded Started
-      if (m.type === 'setRecordingState' && m.payload) {
-        // Do some video readying stuff
-        VideoTexture.CreateFromWebCam(
-          scene,
-          (videoTexture) => {
-            mat.emissiveTexture = videoTexture
-            plane.material = mat
-          },
-          {
-            maxWidth: 256,
-            maxHeight: 256,
-            minWidth: 256,
-            minHeight: 256,
-            deviceId: 'hello'
-          }
-        )
-      }
-      if (m.type === 'setRecordingState' && !m.payload) {
-        mat.emissiveTexture = null
+      if (m.type === 'setCanvas' && m.payload) {
+        if (Renderer.WebcamTexture) {
+          mat.emissiveTexture = Renderer.WebcamTexture
+        } else {
+          VideoTexture.CreateFromWebCam(
+            scene,
+            (videoTexture) => {
+              mat.emissiveTexture = videoTexture
+              plane.material = mat
+            },
+            {
+              maxWidth: 256,
+              maxHeight: 256,
+              minWidth: 256,
+              minHeight: 256,
+              deviceId: 'hello'
+            }
+          )
+        }
       }
     })
   }

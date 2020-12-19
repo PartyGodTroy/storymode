@@ -4,7 +4,7 @@
         justify-content: center;
     }
     .scripter{
-        width:300px;
+        width:500px;
         height:300px;
         border: 2px dashed gray;
         text-align:start;
@@ -21,6 +21,9 @@
         font-size: 20px;
         &:before{
           content:' ';
+        }
+        &.selected{
+          background-color: lightblue;
         }
         cursor:pointer;
     }

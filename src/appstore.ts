@@ -1,27 +1,49 @@
 import { Store } from 'vuex'
 import SpeechToText from './services/SpeechToText'
-import RecordRTCPromisesHandler from 'recordrtc'
+import commandStore, { CommandState } from './commandstore'
+import Utils from './Utils'
 
+const MediaRecorder = (window as any).MediaRecorder || 'none'
+
+export interface Recording {
+  blob?: Blob;
+  url?: string;
+  name: string;
+  inProgress: boolean;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+
+}
+/**
+ * Class for containing app level specs
+ */
 export class AppState {
     mode!: 'debug' | 'production'
     width = 500
     height = 300
+    recordingFPS = 30
     speechToText: SpeechToText = new SpeechToText();
-    recorder!: RecordRTCPromisesHandler
-    canvas!: HTMLCanvasElement
+    recordings: Recording[] = []
+    currentRecording!: Recording | null
+    videoStream!: MediaStream
+    audioStream!: MediaStream
+    videoChunks: Array<any> = []
+    mediaRecorder!: any // MediaRecorder not available in Ts
+    canvas!: HTMLCanvasElement | any // HTMLCanvasElement.captureStream not available in TS
     script = ''
     finalTranscripts = ''
     isRecording = false
-    recordLimit = 1000 // in seconds
-    recordedBlob: Blob[] = []
+    commandStore = commandStore
 }
 const defaultState = new AppState()
 
 const store = new Store<AppState>({
+  modules: {
+  },
   state: defaultState,
   actions: {
     /**
-     *
      * @param store
      */
     enterDebugMode (store) {
@@ -39,39 +61,75 @@ const store = new Store<AppState>({
      * @param ctx
      */
     async record (ctx) {
-      console.log('starting recording')
-      ctx.commit('setRecordingState', true)
+      ctx.commit('setRecording', {
+        startTime: new Date(),
+        name: Utils.uuidv4(),
+        inProgress: true
+      })
       await ctx.dispatch('startRecorderAsync')
       await ctx.dispatch('startSpeechToText')
+      // keep last
+      ctx.commit('setRecordingState', true)
     },
     /**
      *
      * @param ctx
      */
     async stop (ctx) {
-      console.log('stopping recording')
-      ctx.commit('setRecordingState', false)
+      console.log(ctx.state.currentRecording)
       await ctx.dispatch('stopRecorderAsync')
       await ctx.dispatch('stopSpeechToText')
+      // keep last
     },
+
     /**
      *
      * @param ctx
      */
     async startRecorderAsync (ctx) {
+      const streamTracks: MediaStreamTrack[] = []
+
       if (!ctx.state.canvas) {
         console.error('cannot record no canvas set')
       }
-      if (!ctx.state.recorder) {
-        ctx.state.recorder = new RecordRTCPromisesHandler(this.state.canvas, {
-          type: 'canvas',
-          recorderType: 'CanvasRecorder',
-          canvas: {
-            width: ctx.state.width,
-            height: ctx.state.height
-          }
-        })
+      ctx.state.videoStream = ctx.state.canvas.captureStream(30)
+
+      streamTracks.push(...ctx.state.videoStream.getTracks())
+
+      if (navigator.mediaDevices) {
+        console.log('getUserMedia supported.')
+
+        ctx.state.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+        streamTracks.push(...ctx.state.audioStream.getTracks())
+      } else {
+        console.error('getUserMedia not supported')
+        // raise flag NO Audio, its not a deal breaker though
       }
+
+      const combinedstreams = new MediaStream(streamTracks)
+
+      ctx.state.mediaRecorder = new MediaRecorder(combinedstreams)
+
+      ctx.state.mediaRecorder.ondataavailable = (e: any) => {
+        ctx.commit('addVideoChunk', e.data)
+      }
+
+      ctx.state.mediaRecorder.onstop = (e: any) => {
+        if (ctx.state.currentRecording) {
+          ctx.state.currentRecording.blob = new Blob(ctx.state.videoChunks, { type: 'video/mp4' })
+          ctx.state.currentRecording.url = URL.createObjectURL(ctx.state.currentRecording.blob)
+          ctx.state.currentRecording.endTime = new Date()
+          ctx.state.currentRecording.duration = ctx.state.currentRecording.endTime.getTime() - ctx.state.currentRecording.startTime.getTime()
+          ctx.state.currentRecording.inProgress = false
+        }
+        ctx.commit('addRecording', ctx.state.currentRecording)
+        ctx.commit('clearVideoChunks')
+        ctx.commit('setRecordingState', false)
+      }
+
+      ctx.state.mediaRecorder.start()
+
       console.log('starting recorder session')
     },
     /**
@@ -83,19 +141,10 @@ const store = new Store<AppState>({
         console.error('cannot record no canvas set')
       }
 
-      if (!ctx.state.recorder) {
-        console.warn('Cannot dispatch stopRecorderAsync, recorder is null try startRecorderAsync')
-      }
-
       if (!ctx.getters.isRecording) {
         console.warn('Cannot dispatch stopRecorderAsync, recording is NOT in progress')
       }
-
-      ctx.state.recorder.stopRecording(async () => {
-        const blob = await ctx.state.recorder.getBlob()
-        console.log('Finished collecting blob')
-      })
-      console.log('ending recorder session')
+      ctx.state.mediaRecorder.stop()
     },
     /**
      *
@@ -135,10 +184,11 @@ const store = new Store<AppState>({
      * @param state
      * @param canvas
      */
-    setCanvas (state: AppState, canvas: HTMLCanvasElement) {
+    setCanvas (state: AppState, canvas: HTMLCanvasElement | any) {
       if (!canvas) {
         console.error('cannot set a null canvas')
       }
+      console.log('mutation - setCanvas: ' + canvas)
       state.canvas = canvas
     },
     /**
@@ -147,6 +197,7 @@ const store = new Store<AppState>({
      * @param mode
      */
     switchMode (state: AppState, mode: 'debug' | 'production') {
+      console.log('mutation - switchMode: ' + mode)
       state.mode = mode
     },
     /**
@@ -154,15 +205,16 @@ const store = new Store<AppState>({
      * @param state
      */
     initSpeechToText (state: AppState) {
+      console.log('mutation - initSpeechToText')
       state.speechToText.Setup()
     },
     /**
-     *
+     * Passes speech results to command store for processing
      * @param state
      * @param result
      */
     newSpeechResults (state: AppState, result: string) {
-      console.log(result)
+      console.log('new speech results')
     },
     /**
      *
@@ -180,8 +232,24 @@ const store = new Store<AppState>({
     setRecordingState (state: AppState, isRecording: boolean) {
       console.log('isRecording: ' + isRecording)
       state.isRecording = isRecording
-    }
+      if (isRecording) {
 
+      }
+    },
+    addVideoChunk (state: AppState, chunk: any) {
+      state.videoChunks.push(chunk)
+    },
+    clearVideoChunks (state: AppState) {
+      console.log('video chunks cleared')
+    },
+    setRecording (state: AppState, recording: Recording | null) {
+      state.currentRecording = recording
+      console.log('setting current recording to = ' + recording)
+    },
+    addRecording (state: AppState, recording: Recording) {
+      state.recordings.push(recording)
+      console.log('recording finished')
+    }
   },
   /**
    * Getters
@@ -207,6 +275,16 @@ const store = new Store<AppState>({
      */
     scriptText (state: AppState): string {
       return state.script
+    },
+    latestVideoUrl (state: AppState): string {
+      const lastVideo = state.recordings[state.recordings.length - 1]
+      if (lastVideo && lastVideo.url) {
+        return lastVideo.url
+      }
+      return ''
+    },
+    recordings (state: AppState): Recording[] {
+      return state.recordings
     }
   }
 })
