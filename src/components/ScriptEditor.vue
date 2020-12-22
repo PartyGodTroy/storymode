@@ -60,32 +60,11 @@ export default class ScriptEditor extends Vue {
       return
     }
     this.$store.commit('setScriptText', this.scripter.innerText)
-    // Stash this to store
-    // const rawScript = this.scripter.innerHTML
-    // const noTags = this.scripter.innerHTML.replace(/(<([^>]+)>)/ig, '')
-    // const words = noTags.split(' ')
-    // const templateWordSpan = (word: string, id: number) => {
-    //   const isHash = word.startsWith('#')
-    //   const isBrackets = word.startsWith('[') && word.endsWith(']')
-    //   let wordNoSyntax = ''
-    //   if (isHash) {
-    //     wordNoSyntax = word.substring(1)
-    //     return `<span id="${wordNoSyntax + id}" class="keyword" @click="sample">${wordNoSyntax}</span>`
-    //   } else if (isBrackets) {
-    //     wordNoSyntax = word.substring(1, word.length - 1)
-    //     return `<span id="${wordNoSyntax + id}" class="keyword">${wordNoSyntax}</span>`
-    //   } else {
-    //     return word
-    //   }
-    // }
-    // let newInnerHtml = ''
-
-    // words.forEach((w, i) => {
-    //   newInnerHtml += ' ' + templateWordSpan(w, i)
-    // })
-    // this.scripterActions.innerHTML = newInnerHtml
   }
 
+  /**
+ * Unused
+ */
   getCaretPosition (): { caretPos: number; range: Range } | null {
     const selection = window.getSelection()
     if (!selection) {

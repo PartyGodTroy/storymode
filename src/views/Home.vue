@@ -24,28 +24,21 @@
   position:absolute;
   right: 0;
   top: 0;
-  width:100px;
+  width:300px;
 }
 </style>
 
 <template>
-  <div class="side-panel-left">
-    <div>
-      <h3>Recordings</h3>
-    </div>
-    <div v-for="recording in recordings" :key="recording.name" class="recording">
-      <h4>{{recording.name}}</h4>
-      <span>Duration: {{recording.duration}}</span>
-    </div>
-  </div>
   <div class="side-panel-right">
-    <h3>Commands</h3>
+   <DisplayList></DisplayList>
   </div>
   <div class="home">
     <div class="controls">
       <button @click="toggleRecording">
       {{recordBtnTxt}}
       </button>
+      <div>
+  </div>
     </div>
     <div class="container">
       <Renderer></Renderer>
@@ -60,14 +53,17 @@
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component'
 import Renderer from '@/components/Renderer.vue'
-import store, { AppState, Recording } from '../appstore'
+import DisplayList from '@/components/DisplayList.vue'
 import { Mutation } from 'vuex'
 import ScriptEditor from '@/components/ScriptEditor.vue'
+import { AppState } from '@/states/AppState'
+import Recording from '../models/Recording'
 
 @Options({
   components: {
     Renderer,
-    ScriptEditor
+    ScriptEditor,
+    DisplayList
   }
 })
 export default class Home extends Vue {
@@ -107,7 +103,7 @@ export default class Home extends Vue {
     return this.$store.getters.latestVideoUrl
   }
 
-  get recordings (): string {
+  get recordings (): Recording[] {
     return this.$store.getters.recordings
   }
 

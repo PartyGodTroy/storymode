@@ -1,48 +1,29 @@
-import { Store } from 'vuex'
-import SpeechToText from './services/SpeechToText'
-import commandStore, { CommandState } from './commandstore'
+import { Store, StoreOptions } from 'vuex'
 import Utils from './Utils'
+import { Color4, Engine, Scene } from '@babylonjs/core'
+import { State } from '@popperjs/core'
+import Recording from './models/Recording'
+import VideoPlaneBehavior, { VideoPlaneOptions } from './models/behavior/VideoPlaneBehavior'
+import ArcRotateCameraBehavior, { ArcRotateCameraOptions } from './models/behavior/ArcRotateCameraBehavior'
+import { AppState } from './states/AppState'
+import { BehaviorControl } from './models/behavior/Behaviors'
 
 const MediaRecorder = (window as any).MediaRecorder || 'none'
 
-export interface Recording {
-  blob?: Blob;
-  url?: string;
-  name: string;
-  inProgress: boolean;
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-
-}
-/**
- * Class for containing app level specs
- */
-export class AppState {
-    mode!: 'debug' | 'production'
-    width = 500
-    height = 300
-    recordingFPS = 30
-    speechToText: SpeechToText = new SpeechToText();
-    recordings: Recording[] = []
-    currentRecording!: Recording | null
-    videoStream!: MediaStream
-    audioStream!: MediaStream
-    videoChunks: Array<any> = []
-    mediaRecorder!: any // MediaRecorder not available in Ts
-    canvas!: HTMLCanvasElement | any // HTMLCanvasElement.captureStream not available in TS
-    script = ''
-    finalTranscripts = ''
-    isRecording = false
-    commandStore = commandStore
-}
 const defaultState = new AppState()
 
 const store = new Store<AppState>({
-  modules: {
-  },
+
   state: defaultState,
+
   actions: {
+    registerControl (ctx, control: BehaviorControl): BehaviorControl {
+      ctx.state.sceneState.allControls.push(control)
+      return control
+    },
+    getControl (ctx, controlId: string): BehaviorControl | null | undefined {
+      return ctx.state.sceneState.allControls.find(bc => bc.id === controlId)
+    },
     /**
      * @param store
      */
@@ -76,7 +57,6 @@ const store = new Store<AppState>({
      * @param ctx
      */
     async stop (ctx) {
-      console.log(ctx.state.currentRecording)
       await ctx.dispatch('stopRecorderAsync')
       await ctx.dispatch('stopSpeechToText')
       // keep last
@@ -173,12 +153,33 @@ const store = new Store<AppState>({
     stopSpeechToText (ctx) {
       console.log('stopping speech to text')
       ctx.state.speechToText.Stop()
+    },
+    /**
+     * scene actions
+     */
+    /**
+     * Adds an ArcRotateCamera to the scene of the target node provided or the default scenes node
+     * @param state
+     * @param options
+     */
+    addArcRotateCameraBehavior (ctx, options: ArcRotateCameraOptions) {
+      const behavior: ArcRotateCameraBehavior = new ArcRotateCameraBehavior(options)
+      const { scene, node } = ctx.state.sceneState.routeBehaviorToTarget(options.route)
+      node.addBehavior(behavior)
+      ctx.state.sceneState.behaviors.push(behavior)
+    },
+    async addVideoPlaneBehavior (ctx, options: VideoPlaneOptions) {
+      const behavior: VideoPlaneBehavior = new VideoPlaneBehavior(options)
+      const { scene, node } = ctx.state.sceneState.routeBehaviorToTarget(options.route)
+      node.addBehavior(behavior)
+      ctx.state.sceneState.behaviors.push(behavior)
     }
   },
   /**
    * Mutations
    */
   mutations: {
+
     /**
      *
      * @param state
@@ -249,6 +250,54 @@ const store = new Store<AppState>({
     addRecording (state: AppState, recording: Recording) {
       state.recordings.push(recording)
       console.log('recording finished')
+    },
+    /**
+     * Scene Mutations
+     */
+    /**
+     * Stores reference to the engine, adds resizing events, creates the defaultScene, and 'root_node'
+     * then kicks off render loop
+     * @param state
+     * @param engine
+     */
+    setEngine (state: AppState, engine: Engine) {
+      state.sceneState.engine = engine
+      state.sceneState.createScene()
+      // state.
+      window.addEventListener('resize', () => state.sceneState.engine.resize())
+      if (!state.sceneState.defaultSceneIsRendering) {
+        state.sceneState.defaultSceneIsRendering = true
+        let lastRendererErrorName = ''
+        state.sceneState.engine.runRenderLoop(() => {
+          state.sceneState.scenes.forEach(scene => {
+            try {
+              scene.render()
+            } catch (err) {
+              const msg = err as Error
+              if (msg.name !== lastRendererErrorName) {
+                console.warn(msg)
+              }
+              lastRendererErrorName = msg.name
+            }
+          })
+        })
+      }
+    },
+    setSceneClearColor (state: AppState, color: Color4) {
+      if (state.sceneState.defaultScene) {
+        state.sceneState.defaultScene.clearColor = color
+      }
+    },
+    removeBehaviorById (state: AppState, behaviorId: string) {
+      const behaviorIdIndex = state.sceneState.behaviors.findIndex(b => {
+        return b.id === behaviorId
+      })
+      if (behaviorIdIndex > -1) {
+        const behavior = state.sceneState.behaviors.splice(behaviorIdIndex, 1)[0]
+        behavior.remove()
+      } else {
+        console.warn(`Cannot remove ${behaviorId} it is not found`)
+      }
     }
   },
   /**
@@ -269,6 +318,12 @@ const store = new Store<AppState>({
     isRecording (state: AppState): boolean {
       return state.isRecording
     },
+    scenes (state: AppState): Scene[] {
+      if (state.sceneState) {
+        return state.sceneState.scenes
+      }
+      return []
+    },
     /**
      *
      * @param state
@@ -285,6 +340,9 @@ const store = new Store<AppState>({
     },
     recordings (state: AppState): Recording[] {
       return state.recordings
+    },
+    controlCount (state: AppState): number {
+      return state.sceneState.allControls.length
     }
   }
 })
