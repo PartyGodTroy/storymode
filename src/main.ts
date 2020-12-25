@@ -6,6 +6,7 @@ import store from './appstore'
 import router from './router'
 
 import 'bootstrap/dist/css/bootstrap.min.css'
+import 'animate.css/animate.min.css'
 
 const app = createApp(App)
   .use(router)

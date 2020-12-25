@@ -22,6 +22,8 @@ export interface BehaviorCreateOptions {
    * when passing behavior options it is benificial to pick a scene, and or node to use for the behavior
    */
   route?: NodeRoute;
+  removeable?: boolean;
+
 }
 
 export interface BehaviorControl {
@@ -33,6 +35,13 @@ export interface BehaviorControl {
 
 export abstract class SceneBehavior<T extends BehaviorCreateOptions> implements Behavior<TransformNode> {
   controls: BehaviorControl[] = []
+
+  get removeable () {
+    if (this.options.removeable) {
+      return true
+    }
+    return false
+  }
 
   get id () {
     return this.options.id

@@ -7,4 +7,5 @@ export default interface Recording {
   startTime: Date;
   endTime?: Date;
   duration?: number;
+  id: string;
 }

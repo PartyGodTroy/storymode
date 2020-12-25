@@ -44,8 +44,9 @@ const store = new Store<AppState>({
     async record (ctx) {
       ctx.commit('setRecording', {
         startTime: new Date(),
-        name: Utils.uuidv4(),
-        inProgress: true
+        name: '',
+        inProgress: true,
+        id: Utils.uuidv4()
       })
       await ctx.dispatch('startRecorderAsync')
       await ctx.dispatch('startSpeechToText')
@@ -179,7 +180,15 @@ const store = new Store<AppState>({
    * Mutations
    */
   mutations: {
-
+    setSelectedRecording (state: AppState, val: Recording) {
+      state.selectedRecording = val
+    },
+    setDisplayListIsOpened (state: AppState, val: boolean) {
+      state.displayListOpened = val
+    },
+    setRecordingsOpened (state: AppState, val: boolean) {
+      state.recordingsOpened = val
+    },
     /**
      *
      * @param state
@@ -340,6 +349,9 @@ const store = new Store<AppState>({
     },
     recordings (state: AppState): Recording[] {
       return state.recordings
+    },
+    selectedRecording (state: AppState): Recording | null | undefined {
+      return state.selectedRecording
     },
     controlCount (state: AppState): number {
       return state.sceneState.allControls.length

@@ -23,4 +23,7 @@ export class AppState {
   finalTranscripts = '';
   isRecording = false;
   sceneState: SceneState = new SceneState();
+  displayListOpened = false
+  recordingsOpened = false
+  selectedRecording: Recording = { name: '', inProgress: false, id: '', startTime: new Date() }
 }

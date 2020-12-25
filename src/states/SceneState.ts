@@ -4,6 +4,7 @@ import Utils from '../Utils'
 import VideoTextureConstraints from '../models/VideoTextureConstraints'
 import { SceneBehavior, NodeRoute, BehaviorControl } from '../models/behavior/Behaviors'
 import { TransformNode } from '@babylonjs/core/Meshes'
+import FileReference from '@/models/FileReference'
 
 export class SceneState {
   engine!: Engine;
@@ -33,10 +34,13 @@ export class SceneState {
   readonly allControls: BehaviorControl[] = []
 
   readonly behaviors: SceneBehavior<any>[] = [];
+
   readonly rootNodes: Node[] = [];
 
+  readonly fileReferences: FileReference[] = []
+
   videoTextureConstraints: Array<VideoTextureConstraints> = [
-    { minHeight: 512, maxHeight: 512, minWidth: 512, maxWidth: 512, deviceId: '' }
+    { minHeight: 512, maxHeight: 1024, minWidth: 512, maxWidth: 1024, deviceId: '' }
   ];
 
   createScene (): Scene {
@@ -52,6 +56,10 @@ export class SceneState {
 
   getScene (uid: string | undefined): Scene {
     return this.scenes.find(s => s.uid === uid) || this.defaultScene
+  }
+
+  addReference (ref: FileReference) {
+    this.fileReferences.push(ref)
   }
 
   routeBehaviorToTarget (route?: NodeRoute): { scene: Scene; node: Node } {

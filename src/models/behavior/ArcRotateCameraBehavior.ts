@@ -54,6 +54,9 @@ export default class ArcRotateCameraBehavior extends SceneBehavior<ArcRotateCame
         this._camera.minZ = this.options.minZ
       }
       this._camera.parent = target
+      if (this.name === 'Main Camera') {
+        this.addControl({ name: 'BG Color', data: this.scene.clearColor, type: 'color3', id: Utils.uuidv4() })
+      }
     }
 
     detach () {

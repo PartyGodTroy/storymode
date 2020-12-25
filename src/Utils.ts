@@ -23,4 +23,17 @@ export default class Utils {
       b: parseInt(result[3], 16)
     } : null
   }
+
+  static Pad (num: number, size: number): string {
+    let padded = ''
+    const numberLength = num.toString().length
+    if (numberLength < size) {
+      for (let i = 0; i < size - numberLength; i++) {
+        padded = '0' + padded
+      }
+    } else {
+      return num.toString()
+    }
+    return padded
+  }
 }

@@ -1,5 +1,5 @@
 
-import { ArcRotateCamera, Material, Node, Scene, VideoTexture } from '@babylonjs/core'
+import { ArcRotateCamera, Layer, Material, Node, NullEngineOptions, Scene, VideoTexture } from '@babylonjs/core'
 import { Color3, Plane, Vector3 } from '@babylonjs/core/Maths'
 import { BehaviorCreateOptions, NodeRoute, SceneBehavior } from './Behaviors'
 import { TransformNode, Mesh, MeshBuilder } from '@babylonjs/core/Meshes'
@@ -36,11 +36,20 @@ export default class VideoPlaneBehavior extends SceneBehavior<VideoPlaneOptions>
       this.addControl({ name: 'Rotation', data: this.plane.rotation, type: 'vector3', id: Utils.uuidv4() })
       this.material.emissiveColor = Color3.White()
       this.addControl({ name: 'Emissive', data: this.material.emissiveColor, type: 'color3', id: Utils.uuidv4() })
+      this.addControl({ name: 'Scaling', data: this.plane.scaling, type: 'vector3', id: Utils.uuidv4() })
+      const background = new Layer('back', null, this.scene)
 
       VideoTexture.CreateFromWebCam(this.scene, (vTex) => {
         if (this.plane) {
           this.material.diffuseTexture = vTex
         }
+      }, this.$store.state.sceneState.videoTextureConstraints[0])
+
+      VideoTexture.CreateFromWebCam(this.scene, (vTex) => {
+        background.isBackground = true
+        background.texture = vTex
+        background.texture.level = 0
+        background.texture.wAng = Math.PI
       }, this.$store.state.sceneState.videoTextureConstraints[0])
     }
 

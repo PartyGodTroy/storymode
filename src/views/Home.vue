@@ -1,8 +1,7 @@
 <style lang="scss">
-.container{
-  display:flex;
-  justify-content:center;
-  align-items: center;
+.home{
+  height:100%;
+  overflow: hidden hidden;
 }
 .side-panel-left{
   height:100%;
@@ -19,33 +18,26 @@
     border-bottom: 1px solid black;
   }
 }
-.side-panel-right{
-  height:100%;
-  position:absolute;
-  right: 0;
-  top: 0;
-  width:300px;
-}
 </style>
 
 <template>
-  <div class="side-panel-right">
    <DisplayList></DisplayList>
-  </div>
+   <VideoRecordings></VideoRecordings>
   <div class="home">
+    <div class="container-fluid" style="height:90%;">
     <div class="controls">
       <button @click="toggleRecording">
       {{recordBtnTxt}}
       </button>
-      <div>
-  </div>
+      <button @click="openDisplayList">
+        Open Display List
+      </button>
+      <button @click="openRecordings">
+        Open Recordings
+      </button>
     </div>
-    <div class="container">
       <Renderer></Renderer>
-      <video id="playback" controls autoplay="true" width="500" height="300" :src="currentVideoSource"></video>
-    </div>
-    <div class="container">
-      <ScriptEditor></ScriptEditor>
+      <!--video id="playback" controls autoplay="true" width="500" height="300" :src="currentVideoSource"></video-->
     </div>
   </div>
 </template>
@@ -58,12 +50,15 @@ import { Mutation } from 'vuex'
 import ScriptEditor from '@/components/ScriptEditor.vue'
 import { AppState } from '@/states/AppState'
 import Recording from '../models/Recording'
+import store from '../appstore'
+import VideoRecordings from '../components/VideoRecordings.vue'
 
 @Options({
   components: {
     Renderer,
     ScriptEditor,
-    DisplayList
+    DisplayList,
+    VideoRecordings
   }
 })
 export default class Home extends Vue {
@@ -105,6 +100,14 @@ export default class Home extends Vue {
 
   get recordings (): Recording[] {
     return this.$store.getters.recordings
+  }
+
+  openDisplayList () {
+    this.$store.commit('setDisplayListIsOpened', true)
+  }
+
+  openRecordings () {
+    this.$store.commit('setRecordingsOpened', true)
   }
 
   mounted () {
